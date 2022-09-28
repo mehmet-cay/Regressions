@@ -1,0 +1,58 @@
+---
+title: "Building a Model with Categorical Data"
+author: "Mehmet ÇAY"
+date: '2022-08-30'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Building a Model with Categorical Data
+
+We have built model with only numeric variables so far. Nor it is time to dive deep and discover Dummy Variables or One Hot Encoding.
+I assume you know what is One Hot Encoding and idea underlying it. If not, check [here](https://www.statology.org/one-hot-encoding-in-r/)  
+
+Let's make categorical variables as factor first.
+
+```{r}
+data <- read.csv("C:/Users/Mehmet ÇAY/Desktop/R/Regressions/Regressions/Life Expectancy Data.csv")
+
+levels(data$Country)
+levels(data$Year)
+levels(data$Status)
+
+data_cat <- data
+
+data_cat$Country <- as.character(data$Country)
+data_cat$Country <- as.factor(data$Country)
+
+data_cat$Year <- as.character(data$Year)
+data_cat$Year <- as.factor(data$Year)
+
+data_cat$Status <- as.character(data$Status)
+data_cat$Status <- as.factor(data$Status)
+
+dataset2=na.omit(data_cat)
+
+set.seed(735)
+sampleIndex <- sample(1:nrow(dataset2),size=0.8*nrow(dataset2))
+trainSet <- dataset2[sampleIndex,]
+testSet <- dataset2[-sampleIndex,]
+```
+All things are ready. In R, creating categorical model is easy because we do not have to do additional process. All we had to do was identify variables as a factor.
+```{r}
+modelCat <- lm(Life.expectancy ~. ,data = trainSet)
+summary(modelCat)
+```
+Test Time!
+```{r}
+predictions <- predict(modelCat,testSet)
+
+library(caret)
+R2(predictions,testSet$Life.expectancy)
+RMSE(predictions,testSet$Life.expectancy)
+MAE(predictions,testSet$Life.expectancy)
+```
+Results are the best result until now. R2 is almost 1 which is the best for a model. MAE says we can predict life expectancy average ~1 years errors. 

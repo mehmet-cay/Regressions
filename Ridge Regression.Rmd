@@ -1,0 +1,72 @@
+---
+title: "Ridge Regression"
+author: "Mehmet ÇAY"
+date: '2022-08-31'
+output: 
+  html_document: 
+    toc: yes
+    highlight: zenburn
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Ridge Regression
+
+It is going to be assumed that you have enough theoretical knowledge about Ridge Regression. If not, you can check [here](https://www.youtube.com/channel/UCtYLUTtgS3k1Fg4y5tAhLbw)
+
+
+However, what we are  going to do is predict loan amount.
+
+```{r}
+bank <- read.csv("C:/Users/Mehmet ÇAY/Desktop/R/Regressions/Regressions/bank.csv", sep="")
+
+
+library(tidyverse)
+data <- bank %>% mutate(income_category=as.factor(income_category),purpose_cat=as.factor(purpose_cat)) %>% select(loan_amount,income_category,purpose_cat,emp_length_int,annual_inc,installment,dti)
+
+```
+In Ridge Regression in contrast Multiple Linear Regression we have to make Dummy Variables ourselves. 
+```{r}
+data2 <- model.matrix(loan_amount~. , data=data)
+head(data2)
+```
+Ridge Model
+```{r}
+set.seed(264)
+sampleIndex <- sample(1:nrow(data2),size=0.8*nrow(data2))
+trainSetIndependent <- data2[sampleIndex,]
+testSetIndependent <- data2[-sampleIndex,]
+
+trainSetDependent <- data$loan_amount[sampleIndex]
+testSetDependent <- data$loan_amount[-sampleIndex]
+
+library(glmnet)
+
+modelRidge <- glmnet(trainSetIndependent,trainSetDependent,alpha=0,lambda=0.1)
+summary(modelRidge)
+```
+In order to find best lambda value, cross validation should be proceed.
+```{r}
+lambdas <- 10^seq(3,-3,by=-.01)
+
+modelRidgeCV <- cv.glmnet(trainSetIndependent,trainSetDependent,alpha=0,lambda=lambdas,nfolds=5)
+
+plot(modelRidgeCV)
+```
+As it can be seen in the graph, MSS values are changing according to lambdas value. Min error was signed in the graph.
+```{r}
+modelRidgeCV$lambda.min
+
+bestModel <- glmnet(trainSetIndependent,trainSetDependent,alpha=0,lambda=modelRidgeCV$lambda.min)
+
+predictions <- predict(bestModel,testSetIndependent)
+
+library(caret)
+R2(predictions,testSetDependent)
+RMSE(predictions,testSetDependent)
+MAE(predictions,testSetDependent)
+
+```
+Results are good. We can estimate loan amount average ~2000 error.When the hundreds of thousands are considered , this error is good.

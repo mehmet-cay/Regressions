@@ -1,0 +1,100 @@
+---
+title: "Multi Logistic Regression"
+author: "Mehmet ÇAY"
+date: "2022-09-22"
+output: 
+  html_document: 
+    toc: yes
+    highlight: zenburn
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Multi Logistic Regression
+
+The only differences between multi logistic regression and logistic regression is that multi logistic regression predict more than 2 class.
+
+```{r}
+library(tidyverse)
+modelData <- read.csv("C:/Users/Mehmet ÇAY/Desktop/R/Regressions/Regressions/heart-diseases.csv")
+
+modelData <- modelData[ , -which(names(modelData) == "target")]
+table(modelData$cp)
+
+modelData <- modelData[modelData$cp != 3 , ]
+table(modelData$cp)
+
+modelData <- modelData %>% mutate(
+                        cp = as.factor(cp),
+                        slope = as.factor(slope),
+                        ca = as.factor(ca),
+                        thal = as.factor(thal),
+                        restecg = as.factor(restecg)
+)
+
+table(modelData$restecg)
+
+
+trainTestSplit <- function(data , dvName , seed){
+  
+          tbl <- table(data[,dvName])
+          classes <- names(tbl)
+          minClass <- min(tbl)
+          lengthClass <- length(tbl)
+          
+          train <- data.frame()
+          test <- data.frame()
+          
+          for(i in 1:lengthClass){
+              
+             selectedClass <- data[,dvName] == classes[i]
+             set.seed(seed)
+             sampleIndex <- sample(1:nrow(data[selectedClass , ]) , size = minClass*0.8)
+             
+             train <- rbind(train , data[selectedClass , ][sampleIndex , ])
+             test <- rbind(test , data[selectedClass , ][-sampleIndex , ])
+          }
+          
+          return(list(train , test))
+  
+}
+
+train <- trainTestSplit(modelData , "cp" , 125)[[1]]
+test <- trainTestSplit(modelData , "cp" , 125)[[2]]
+
+table(train$cp)
+table(test$cp)
+```
+```{r}
+library(e1071)
+library(tidyverse)
+library(nnet)
+library(caret)
+
+
+modelBase <- multinom(cp ~ . , data = train)
+summary(modelBase)
+modelBase$fitted.values
+modelBase$decay
+```
+```{r}
+model2 <- multinom(cp ~ sex + fbs + restecg + thalach + exang + oldpeak + slope + ca + thal 
+                   , data = train)
+summary(model2)
+
+library(caret)
+caret::varImp(modelBase)
+
+predModelBase <- predict(modelBase , test)
+predModelBase
+
+predModel2 <- predict(model2 , test)
+predModel2
+
+caret::confusionMatrix(predModelBase , test$cp , mode = "prec_recall")
+caret::confusionMatrix(predModel2 , test$cp , mode = "prec_recall")
+```
+
+

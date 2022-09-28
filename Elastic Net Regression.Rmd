@@ -1,0 +1,80 @@
+---
+title: "Elastic Net Regression"
+author: "Mehmet ÇAY"
+date: '2022-08-31'
+output: 
+  html_document: 
+    toc: yes
+    highlight: zenburn
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Elastic Net Regression
+
+Elastic Net Regression basically finds the best line between Ridge Regression and Lasso Regression. If you remember, we gave alpha 0 when we want to do Ridge Regression, 1 for Lasso Regression. Now, Elastic Net Regression finds best alpha value, for instance alpha = .4 may be interpreted 40 percentage of Ridge and 60 percentage of Lasso Regression.
+
+```{r}
+library(tidyverse)
+library(glmnet)
+library(caret)
+
+modelData <- mtcars %>% mutate(
+                    cyl = as.factor(cyl),
+                    vs = as.factor(vs),
+                    am = as.factor(am),
+                    gear = as.factor(gear),
+                    carb = as.factor(carb)
+      )
+
+modelDataDummy <- model.matrix( ~ . , data  = modelData)
+View(modelDataDummy)
+
+set.seed(155)
+sampleTrainIndex <- sample(1:nrow(modelDataDummy) , size = 0.75*nrow(modelDataDummy))
+
+trainData <- modelDataDummy[sampleTrainIndex , ]
+testData <- modelDataDummy[-sampleTrainIndex , ]
+
+trainDataX <- trainData[, -c(1,2)]
+trainDataY <- trainData[, 2]
+
+testDataX <- testData[, -c(1,2)]
+testDataY <- testData[, 2]
+
+lambdas <- 10^seq(2,-2 , by = -0.01)
+
+modelElastic <- glmnet(trainDataX , trainDataY , alpha = 0.5 , lambda = lambdas)
+
+plot(modelElastic , xvar = "lambda")
+```
+Elastic Net Cross Validation
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+trControl = trainControl(method = "repeatedcv" , number = 3 , 
+             repeats = 5 , 
+             search = "random",
+             verboseIter = TRUE , )
+
+
+modelElasticCV<- train(trainDataX , trainDataY ,  method = "glmnet" , 
+                   tuneLength = 30 , 
+                   trControl = trControl)
+
+```
+
+
+Model Performance
+```{r}
+
+predictModel <- glmnet(trainDataX , trainDataY , alpha = 0.3638, lambda = modelElasticCV$bestTune )
+
+predictions_1 <- predict(predictModel , testDataX )
+
+caret::R2(predictions_1 , testDataY)
+caret::RMSE(predictions_1 , testDataY)
+caret::MAE(predictions_1 , testDataY)
+
+```
+

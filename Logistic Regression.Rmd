@@ -1,0 +1,108 @@
+---
+title: "Logistic Regression"
+author: "Mehmet ÇAY"
+date: "2022-09-22"
+output: 
+  html_document: 
+    toc: yes
+    highlight: zenburn
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Logistic Regression
+
+I assume you know the neccessary mathematical information for Logistic Regression. If not, please chech [here](https://www.javatpoint.com/logistic-regression-in-machine-learning).
+
+The dataset is publically available on the Kaggle website, and it is from an ongoing cardiovascular study on residents of the town of Framingham, Massachusetts. The classification goal is to predict whether the patient has 10-year risk of future coronary heart disease (CHD).The dataset provides the patients’ information. It includes over 4,000 records and 15 attributes.
+Variables
+Each attribute is a potential risk factor. There are both demographic, behavioral and medical risk factors.
+
+Demographic:
+• Sex: male or female(Nominal)
+• Age: Age of the patient;(Continuous - Although the recorded ages have been truncated to whole numbers, the concept of age is continuous)
+Behavioral
+• Current Smoker: whether or not the patient is a current smoker (Nominal)
+• Cigs Per Day: the number of cigarettes that the person smoked on average in one day.(can be considered continuous as one can have any number of cigarettes, even half a cigarette.)
+Medical( history)
+• BP Meds: whether or not the patient was on blood pressure medication (Nominal)
+• Prevalent Stroke: whether or not the patient had previously had a stroke (Nominal)
+• Prevalent Hyp: whether or not the patient was hypertensive (Nominal)
+• Diabetes: whether or not the patient had diabetes (Nominal)
+Medical(current)
+• Tot Chol: total cholesterol level (Continuous)
+• Sys BP: systolic blood pressure (Continuous)
+• Dia BP: diastolic blood pressure (Continuous)
+• BMI: Body Mass Index (Continuous)
+• Heart Rate: heart rate (Continuous - In medical research, variables such as heart rate though in fact discrete, yet are considered continuous because of large number of possible values.)
+• Glucose: glucose level (Continuous)
+Predict variable (desired target)
+• 10 year risk of coronary heart disease CHD (binary: “1”, means “Yes”, “0” means “No”)
+
+```{r}
+
+library(caret)
+library(glmnet)
+library(tidyverse)
+
+heart <- read.csv("C:/Users/Mehmet ÇAY/Desktop/R/Regressions/Regressions/heart.csv")
+heart <- na.omit(heart)
+heart1 <- heart %>% filter(TenYearCHD==1)
+heart0 <- heart %>% filter(TenYearCHD==0)
+
+set.seed(926)
+Index1 <- sample(1:nrow(heart1),size=0.8*nrow(heart1))
+Index0 <- sample(1:nrow(heart0),size=0.8*nrow(heart0))
+
+train1 <- heart1[Index1,]
+test1 <- heart1[-Index1,]
+
+train0 <- heart0[Index0,]
+test0 <- heart0[-Index0,]
+
+trainSet <- rbind(train1,train0)
+testSet <- rbind(test1,test0)
+```
+
+Data analysis has been done. Now, we are going to create Logistic Regression Model with using glmnet.
+
+```{r}
+modelLog <- glm(TenYearCHD ~ . ,data=trainSet, family="binomial")
+modelLog
+summary(modelLog)
+
+varImp <- varImp(modelLog) #That shows scores of impact of  variables on our model.
+varImp
+
+modelLog <- glm(TenYearCHD ~ male+age+cigsPerDay+sysBP+glucose ,data=trainSet, family="binomial")
+summary(modelLog)
+```
+Now, we need to test our model.
+```{r}
+library(InformationValue)
+
+predictions <- plogis(predict(modelLog , testSet))
+```
+After we did our predictions, we are going to realize that our results are like 0.635, 0.245, 0.3453 ... We want our results as a probability value, between 0 and 1. "plogis" function solves that problem and it comes from "InformationValue" package.
+```{r}
+cm <- InformationValue::confusionMatrix(testSet$TenYearCHD , predictedScores = predictions)
+cm
+
+accuracyRate <- (cm[1,1] + cm[2,2]) /sum(cm)
+accuracyRate
+```
+After that, we all are going to use Accuracy Rate, Recall, Specificity, Precision to evaluate optimum model. If you want to understand what they are want to have strong background for meaning of them, you can check online. [Here](https://towardsdatascience.com/accuracy-recall-precision-f-score-specificity-which-to-optimize-on-867d3f11124) is your first link from me.
+```{r}
+optCutoff <- InformationValue::optimalCutoff(testSet$TenYearCHD , predictedScores = predictions,returnDiagnostics=T)
+```
+You all realized that actually we have a cut-off value. If our probability value is greater than that cut-off value, it gets 1. If not, it gets 0. So, what is optimum cut-off value. In order to find best cut-off value we are going to try every cut-off value and compare their accuracy rate. The cut-off value which gives the greatest accuracy rate gets out optimum cut-off value and we reproduce our model according to that cut-off value.
+```{r}
+cmOpt <- InformationValue::confusionMatrix(testSet$TenYearCHD , 
+                                           predictedScores = predictions ,
+                                           threshold = 0.3783543)
+accurOpt <- (cmOpt[1,1] + cmOpt[2,2]) /sum(cmOpt)
+accurOpt
+```
+

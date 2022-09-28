@@ -1,0 +1,101 @@
+---
+title: "Simple Linear Regression"
+author: "Mehmet ÇAY"
+date: '2022-08-30'
+output: 
+  html_document: 
+    toc: yes
+    highlight: zenburn
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Simple Linear Regression
+
+It is not going to be talked about to essences or basics of Regression. In the whole documents about Regressions, it is going to be assumed that you know the idea behind Regressions and can explain its mathematical background.
+
+The dataset file includes a hourly/daily summary for Szeged, Hungary area, between 2006 and 2016.
+
+Data available in the hourly response:
+
+time
+summary
+precipType
+temperature
+apparentTemperature
+humidity
+windSpeed
+windBearing
+visibility
+loudCover
+pressure
+
+```{r}
+weatherHistory <- read.csv("C:/Users/Mehmet ÇAY/Desktop/R/Regressions/Regressions/weatherHistory.csv")
+
+weatherHistory <- weatherHistory[,c(4,6,7)] #Only temperature,humidity,windSpeed were chosen
+
+set.seed(983)
+
+sampleIndex <- sample(1:nrow(weatherHistory),size=0.8*nrow(weatherHistory))
+trainSet <- weatherHistory[sampleIndex,]
+testSet <- weatherHistory[-sampleIndex,]
+
+```
+
+We divided randomly our data two group. One is for create our model, another is for testing.
+```{r}
+cor(trainSet$Humidity,trainSet$Wind.Speed..km.h.)
+
+cor(trainSet$Humidity,trainSet$Temperature..C.)
+```
+There is relativly strong correlation between humudity and temperature.
+
+```{r}
+plot(trainSet$Humidity,trainSet$Temperature..C.)
+```
+
+Now we are more sure there is a correlation.
+
+```{r}
+library(outliers)
+
+scores <- scores(trainSet,type="z",prob=0.95)
+anyTrue <- apply(scores, 1, FUN=function(x){any(x)})
+index <- which(anyTrue)
+
+trainSet <- trainSet[-index,]
+cor(trainSet)
+plot(trainSet$Humidity,trainSet$Temperature..C.)
+```
+Sometimes it happens. When we remove outliers, correlation can decrease.
+
+```{r}
+library(mice)
+md.pattern(trainSet)
+```
+
+There is no missing value. Now it is time to create our model.
+
+```{r}
+reg1 <- lm(Temperature..C. ~ Humidity, data=trainSet)
+
+summary(reg1)
+```
+Our target is predict temperature according to humidity.
+```{r}
+pred1 <- predict(reg1,testSet)
+```
+We did our predictions. Now it is time for testing.
+```{r}
+library(caret)
+
+R2(pred1,testSet$Temperature..C.)
+RMSE(pred1,testSet$Temperature..C.)
+MAE(pred1,testSet$Temperature..C.)
+```
+The larger the R2 value, the better the model.
+The smaller the RMSE value, the better the model.
+The smaller the MAE value, the better the model.

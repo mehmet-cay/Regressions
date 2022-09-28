@@ -1,0 +1,66 @@
+---
+title: "Multiple Linear Regression"
+author: "Mehmet ÇAY"
+date: '2022-08-30'
+output: 
+  html_document: 
+    toc: yes
+    highlight: zenburn
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Multiple Linear Regression
+
+This dataset contains information compiled by the World Health Organization and the United Nations to track factors that affect life expectancy. The data contains 2938 rows and 22 columns. The columns include: country, year, developing status, adult mortality, life expectancy, infant deaths, alcohol consumption per capita, country’s expenditure on health, immunization coverage, BMI, deaths under 5-years-old, deaths due to HIV/AIDS, GDP, population, body condition, income information and education.
+
+What we are going to do is predict life expectancy according to BMI, alcohol,and schooling.
+```{r}
+data <- read.csv("C:/Users/Mehmet ÇAY/Desktop/R/Regressions/Regressions/Life Expectancy Data.csv")
+
+dataset <- data[,c(4,7,11,22)]
+
+```
+```{r}
+library(mice)
+md.pattern(dataset)
+
+imputed <- mice(dataset,m=5)
+dataset2 <- as.data.frame(complete(imputed,m=3))
+
+library(outliers)
+scores <- scores(dataset2,type="z",prob=0.95)
+anyTrue <- apply(scores,1,FUN=function(x){any(x)})
+index <- which(anyTrue)
+datasetFinal <- dataset2[-index,]
+```
+Wr prepared our data to create model.
+
+```{r}
+set.seed(324)
+sampleIndex <- sample(1:nrow(datasetFinal),size=0.8*nrow(datasetFinal))
+trainSet <- datasetFinal[sampleIndex,]
+testSet <- datasetFinal[-sampleIndex,]
+```
+
+Train  set and test set are prepared.
+```{r}
+model <- lm(X1.Life.expectancy~.,data=trainSet)
+summary(model)
+```
+Multiple Linear Model was created. Model says all variables have strong correlation with life expectancy.
+
+```{r}
+predictions <- predict(model,testSet)
+
+```
+Predictions were made.
+```{r}
+library(caret)
+R2(predictions,testSet$X1.Life.expectancy)
+RMSE(predictions,testSet$X1.Life.expectancy)
+MAE(predictions,testSet$X1.Life.expectancy)
+```
+MAE reveals that life expectancy can be predicted average ~3 years error.

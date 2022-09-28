@@ -1,0 +1,82 @@
+---
+title: "Lasso Regression"
+author: "Mehmet ÇAY"
+date: '2022-08-31'
+output: 
+  html_document: 
+    toc: yes
+    highlight: zenburn
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Lasso Regression
+
+Lasso Regression is kind of Ridge Regression, Only differences between them is their mathematical formulas. If you understood Ridge Regression's idea, you would easily understand what Lasso Regression is. And in our codes, only differences is "alpha". All we have to switch alpha from 0 to 1.
+
+```{r}
+library(tidyverse)
+data <- mtcars %>% mutate(
+                    cyl = as.factor(cyl),
+                    vs = as.factor(vs),
+                    am = as.factor(am),
+                    gear = as.factor(gear),
+                    carb = as.factor(carb)
+      )
+
+```
+
+One Hot Encoding
+```{r}
+data2 <- model.matrix( ~ . , data  = data)
+
+```
+Prepare Data
+```{r}
+set.seed(155)
+sampleTrainIndex <- sample(1:nrow(data2) , size = 0.75*nrow(data2))
+
+trainData <- data2[sampleTrainIndex , ]
+testData <- data2[-sampleTrainIndex , ]
+
+trainDataX <- trainData[, -c(1,2)]
+trainDataY <- trainData[, 2]
+
+testDataX <- testData[, -c(1,2)]
+testDataY <- testData[, 2]
+```
+Cross Validation
+```{r}
+lambdas <- 10^seq(2,-2 , by = -0.01)
+
+library(glmnet)
+model <- cv.glmnet(trainDataX , trainDataY , alpha = 1 , lambda = lambdas , nfolds = 3 )
+plot(model)
+best_lambda <- model$lambda.min
+```
+
+Model Performance
+```{r}
+modelLasso <- glmnet(trainDataX , trainDataY , alpha = 1 , lambda = best_lambda) 
+
+predictions <- predict(modelLasso , testDataX)
+
+library(caret)
+
+R2(predictions , testDataY)
+MAE(predictions , testDataY)
+RMSE(predictions , testDataY)
+
+#What would happen otherwise
+modelLassoOLS<- glmnet(trainDataX , trainDataY , alpha = 1 , lambda = 0)
+
+predictionsOLS <- predict(modelLassoOLS , testDataX)
+
+R2(predictionsOLS , testDataY)
+MAE(predictionsOLS , testDataY)
+RMSE(predictionsOLS , testDataY)
+
+```
+
